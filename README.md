@@ -2,12 +2,15 @@
 This case study analyzing the impact of different optimizers and certain improvements on Fashion-MNIST-dataset
 
 # Motivation & Expactation
+
+Convolutional Neural Networks (CNNs) are commonly introduced together with standard training pipelines, where choices such as optimizers, Batch Normalization, learning rate scheduling or Data Augmentation are often presented as generally beneficial practices. However, systematic comparisons of these techniques under controlled conditions are less common, particularly for beginners trying to understand why certain design choices improve model behaviour.
+
+The objective of this project was therefore not simply to achieve the highest possible Fashion-MNIST accuracy, but to empirically investigate how individual optimization and regularization techniques affect convergence speed, training stability, model generalization and final classification performance.
+
+To answer these questions, two dedicated experiments were conducted.
+
 ## Experiment 1 - Optimizer Benchmark
-While convolutional neural networks are often introduced together with the Adam optimizer by default, the practical impact of alternative optimization strategies is rarely investigated under controlled conditions.
-
-Most tutorials focus on achieving a good result as quickly as possible, while the underlying trade-off between convergence speed, stability, computational efficiency and final model quality is often overlooked.
-
-The objective of this experiment was therefore to isolate the optimizer as the only varying component and evaluate its impact under identical conditions.
+The first experiment isolates the optimizer as the only changing variable.
 
 My expectations were:
 
@@ -27,11 +30,7 @@ This benchmark investigates whether these theoretical expectations are observabl
 
 ## Experiment 2 - Architecture & Regularization Benchmark
 
-After identifying high-performing optimizers, the next step was to investigate whether architectural and training improvements could produce larger gains than optimizer selection alone.
-
-Modern CNN implementations commonly employ additional techniques such as Batch Normalization, Data Augmentation and Learning Rate Scheduling. These methods are often presented as universally beneficial, yet their individual contribution is rarely quantified in isolation.
-
-The goal of this experiment was therefore to measure the practical impact of each technique under controlled conditions.
+The second experiment investigates common CNN improvement techniques.
 
 My expectations were:
 
@@ -68,8 +67,8 @@ Since each technique targets a different aspect of model optimization, the fully
   * Seaborn
 
 # Dataset
-Fashion-MNIST
-## Features:
+Fashion-MNIST is a grayscale image classification dataset designed as a more challenging replacement for the handwritten MNIST digit dataset.
+## chracteristics:
   * 60,000 training images
   * 10,000 test images
   * 10  clothing categories
@@ -87,190 +86,348 @@ Fashion-MNIST
   * Bag
   * Ankle Boot
 
-# Experimental Design
-The same CNN architecture was trained using four different optimization algorithms:
+## Preprocessing:
+  * Pixel normalization from [0,255] to [0,1]
+  * Additional channel dimension added for CNN compatibility
+  * Validation split: 20%
+  * No class balancing applied
 
-  * Adam
-  * AdamW
-  * SGD with Momentum
-  * RMSprop
+# Base CNN Architecture
+The benchmark uses a custom CNN architecture consisting of:
 
-# Training configuration
-  * Epochs
-  * AdamW
-  * SGD with Momentum
-  * RMSprop
+## Preprocessing:
+  * Conv2D (64)
+  * Conv2D (64)
+  * MaxPooling
+  * Conv2D (128)
+  * Conv2D (128)
+  * MaxPooling
 
-  * 
-1. Due to low correlation: removing feature sepal.width
-2. One-Hot-Encoding (OHE) of the species column
-3. Standard scaling of:
-   * petal.length
-   * petal.width
-4. Train-test split:
-   * 80% training
-   * 20% testing
-  
-# Architectures
-Following section describes the used architectures of this experiment.
-## Modelarchitecture
-The model architecture stays fixed for all upcoming activation-function tests:
-```text
-  [ Input ] ──> ( 4 Features )
-       │
-       ▼
-  [ Layer ] ──> Dense (32, Activation)
-       │
-       ▼
-  [ Layer ] ──> Dense (64, Activation)
-       │
-       ▼
-  [ Output ] ──> Dense (1)
-```
-## Networkarchitecture
-The network architecture stays fixed for all upcoming activation-function tests.
-  * Dense: 32 - 64 - 1
-  * Optimizer: Adam
-  * Loss: Mean Absolute Error (MAE)
-  * Epochs: 70
-  * Batch size: 32
+# classification head:
+  * Flatten
+  * Dense (128)
+  * Dropout (0.3)
+  * Dense (10 Softmax)
 
-# Experimental Design
-Only the activation function was changed - all other parameters remained identical.
-Tested activation functions:
-  * ReLU
-  * Leaky ReLU
-  * ELU
-  * SeLU
-  * GELU
-  * Swish
-  * Tanh
-  * Sigmoid
-    
-To understand and follow the thesis of the textbooks, I will first compare MAE and R² for each activation function. In the second step, I will compare: error distribution, loss progression, prediction vs reality, and residual plots.
+The same architecture serves as the foundation for all optimizer and architecture benchmark experiments.
+
+# Experiment 1: Optimizer Benchmark
+## Experimental Design
+The optimizer benchmark compares four optimization algorithms while keeping all other parameters fixed.
+## Tested Optimizers
+   * Adam
+   * AdamW
+   * SGD with Momentum
+   * RMSprop
+## Shared Hyperparameters
+   * Epochs: 12
+   * Batch Size: 64
+   * Early Stopping (patience = 3)
+   * Dropout = 0.3
+   * Sparse Categorical Crossentropy
+   * Identical CNN Architecture
 
 # Results
-After running my Python-script, I've got the following results. They are ordered by ascending R²-values.
+## Test Accurancy Overview
 
-| Activiation-function | MAE   | R²-Score |
-|----------------------|-------|----------|
-| ELU                  | 0,259 | 0,849    |
-| SeLU                 | 0,270 | 0,837    |
-| Swish                | 0,284 | 0,815    |
-| Tanh                 | 0,262 | 0,815    |
-| ReLU                 | 0,304 | 0,802    |
-| Leaky_ReLU           | 0,320 | 0,793    |
-| GELU                 | 0,332 | 0,767    |
-| Sigmoid              | 0,482 | 0,419    |
+| Optimizer         | Test Accuracy |
+|-------------------|---------------|
+| AdamW             | 92,50%        |
+| Adam              | 92,42         |
+| RMSProp           | 92,10         |
+| SGD with Momentum | 91,98%        |
 
-Theory says: MAE is more robust to outliers and gives a directly interpretable average deviation. R² is useful for communicating explained variance, but it can be misleading if looked at on its own: a high R² doesn’t automatically mean good predictions on new data, and R² can even be negative if a model performs worse than just predicting the mean.
-Just by viewing MAE and R²-score for each activation-function, it can be postulated: for the chosen architecture and training configuration, ELU achieved the highest R² score. Sigmoid performed significantly worse than all other activation funtions. Interstingly, GELU did not outperform ReLU in this experiment, despite its popularity in modern deep learning architectures.
-The results suggest that activation-function performance is highly dependent on the dataset and network architecture.
+The overall accuracy differences are relatively small, indicating that optimizer choice has a stronger influence on training dynamics than on absolute performance.
 
-The final evaluation is not based solely on MAE and R².
-To better understand model behaviour and generalization, the following diagnostic plots were analyzed:
- * Loss progression
- * Prediction vs. Reality
- * Error distribution
- * Residual plots
-These visualizations help identify overfitting, underfitting, systematic prediction bias and overall prediction quality.
+## Convergance Analysis
+**Adam**
 
-## loss-progression
-For easy classification:
- * ideal case: Both curves go down and stay close to each other --> model learns and generalizes well to unseen data.
- * overfitting: training goes down, validation goes up: training keeps getting better; Validation is getting worse --> model is momorizing the training data
- * underfitting: both curves go down, but on high level --> model is to simple or short trained
+Adam demonstrated rapid convergence and reached competitive accuracy within only a few epochs.
+The Training Loss continuously decreased while Validation Accuracy stabilized around 93%.
+This behaviour confirms why Adam is often considered the default optimizer for CNN-based classification problems.
 
-<img width="800" height="500" alt="loss_tanh" src="https://github.com/user-attachments/assets/78f74647-f035-401d-a924-33cd0e823084" />
-<img width="800" height="500" alt="loss_swish" src="https://github.com/user-attachments/assets/41cd16cd-5e5e-4b6c-997a-f5ba973edebe" />
-<img width="800" height="500" alt="loss_sigmoid" src="https://github.com/user-attachments/assets/25b1b39f-c5d8-43ee-9c4a-271ca2929050" />
-<img width="800" height="500" alt="loss_selu" src="https://github.com/user-attachments/assets/95d58f69-e1ed-45cd-bb6d-ba7fba4333b7" />
-<img width="800" height="500" alt="loss_relu" src="https://github.com/user-attachments/assets/615555c8-1b3f-42fa-ac7f-ae2eb2d9ad43" />
-<img width="800" height="500" alt="loss_leaky_relu" src="https://github.com/user-attachments/assets/3533bc3e-4e1d-445e-bdec-904ce97243e9" />
-<img width="800" height="500" alt="loss_gelu" src="https://github.com/user-attachments/assets/33c2db54-1376-4e45-9bef-31d8ae101443" />
-<img width="800" height="500" alt="loss_elu" src="https://github.com/user-attachments/assets/e5d02bbb-aa84-46e8-bf37-85106da57988" />
+**Strengths**
+  * Fast convergence
+  * Stable training
+  * Strong accuracy
+    
+**Weaknesses**
+  * Slight increase in Validation Loss after reaching its minimum
 
-A good loss progression is characterized by decreasing training and validation loss curves that remain close to each other.
-A widening gap between both curves indicates overfitting, whereas consistently high losses suggest underfitting.
+This suggests diminishing returns during later optimization stages.
 
-## prediction vs. reality
-For easy classification:
- * the red line symbolizes the ideal line
- * perfect model: all data-points on the diagonal --> "prediction equals reality."
- * good model: all data-points lie close around the diagonal --> "prediction follow the real values with small deviations."
- * bad model: large spread --> "predictions are inaccurate and deviate significantly from the real targets."
 
-<img width="600" height="600" alt="pred_tanh" src="https://github.com/user-attachments/assets/f1795b7a-f88f-41a3-9011-f8b4ee2d65a5" />
-<img width="600" height="600" alt="pred_swish" src="https://github.com/user-attachments/assets/49236655-710c-444b-9a8d-fe9a6f89989a" />
-<img width="600" height="600" alt="pred_sigmoid" src="https://github.com/user-attachments/assets/2f1b9429-fca3-4c31-8d91-b45fb464bed9" />
-<img width="600" height="600" alt="pred_selu" src="https://github.com/user-attachments/assets/6840749c-b60a-4bf3-9a94-75dac6dec8c2" />
-<img width="600" height="600" alt="pred_relu" src="https://github.com/user-attachments/assets/c4249777-a321-4287-902d-1eb5c900fc73" />
-<img width="600" height="600" alt="pred_leaky_relu" src="https://github.com/user-attachments/assets/d9b022c1-9a18-41a1-bd56-85bfa903e519" />
-<img width="600" height="600" alt="pred_gelu" src="https://github.com/user-attachments/assets/b2893f07-4e3e-461f-9674-3a9655450180" />
-<img width="600" height="600" alt="pred_elu" src="https://github.com/user-attachments/assets/ce757244-e052-4533-a923-dca6d67d7afd" />
+**AdamW**
 
-## error history
-For easy classification:
- * ideal case: maximum at 0 --> The model overestimates and underestimates about equally often.
- * shift case: maximum not at 0 --> The model has a systematic error (bias).
- * very wide distribution case: big prediction errors.
-   
-<img width="800" height="400" alt="error_hist_tanh" src="https://github.com/user-attachments/assets/96e64fbb-4726-45ad-8abb-965dad9c7e86" />
-<img width="800" height="400" alt="error_hist_swish" src="https://github.com/user-attachments/assets/884f35df-d169-46b6-92e8-5056112aa127" />
-<img width="800" height="400" alt="error_hist_sigmoid" src="https://github.com/user-attachments/assets/478977fc-17c9-4ceb-bac8-d3af05125b2e" />
-<img width="800" height="400" alt="error_hist_selu" src="https://github.com/user-attachments/assets/304d288e-a72f-4ce1-ab8a-90db661c9a1f" />
-<img width="800" height="400" alt="error_hist_relu" src="https://github.com/user-attachments/assets/9ca0c224-f15c-47f0-9360-d41b2de51aa8" />
-<img width="800" height="400" alt="error_hist_leaky_relu" src="https://github.com/user-attachments/assets/c2d9c67c-8a39-42ea-927e-9aa54ca84b8f" />
-<img width="800" height="400" alt="error_hist_gelu" src="https://github.com/user-attachments/assets/d4bdcee7-be91-4c80-9f9a-edd264498e00" />
-<img width="800" height="400" alt="error_hist_elu" src="https://github.com/user-attachments/assets/5111f210-20c6-40fd-a84f-5ba12c7545cb" />
+AdamW achieved the highest overall test accuracy while maintaining highly stable learning curves.
+Compared to standard Adam, Validation Loss remained slightly more controlled, indicating improved generalization.
+The decoupled weight decay mechanism appears beneficial even on a relatively small dataset such as Fashion-MNIST.
 
-A well-performing model should produce a centered error distribution around zero.
-Wide distributions indicate larger prediction errors, while shifted distributions may reveal systematic prediction bias.
+**Strengths**
+  * Highest accuracy
+  * Stable convergence
+  * Strong generalization
 
-## residual-plot
-For easy classification:
- * good case: random scatter around 0 / no patterns. --> interpretation: no systematic error pattern.
- * bad case 1 "curves" --> Model didn't understand the context.
- * bad case 2 "funnel shapes" -->  Errors get bigger as the values increase.
- * bad case 3 "cluster" --> There are groups in the dataset that are treated differently.
+AdamW delivered the most balanced performance across all measured criteria.
 
-<img width="800" height="400" alt="residual_tanh" src="https://github.com/user-attachments/assets/2a4d5f2c-e03a-4f0a-b32f-a13a9e350a4a" />
-<img width="800" height="400" alt="residual_swish" src="https://github.com/user-attachments/assets/1760e943-a352-4c3e-8f2e-33151ba4559e" />
-<img width="800" height="400" alt="residual_sigmoid" src="https://github.com/user-attachments/assets/12de109b-efa2-47af-b2d0-befa5003ca16" />
-<img width="800" height="400" alt="residual_selu" src="https://github.com/user-attachments/assets/cc230429-ed63-41c5-b296-2ad0b4d20964" />
-<img width="800" height="400" alt="residual_relu" src="https://github.com/user-attachments/assets/fb92db62-2621-418f-8b48-363832233bb9" />
-<img width="800" height="400" alt="residual_leaky_relu" src="https://github.com/user-attachments/assets/000fda07-fe01-4543-a51c-002158bacf48" />
-<img width="800" height="400" alt="residual_gelu" src="https://github.com/user-attachments/assets/418eb1c7-7635-4fd6-aacf-4cdb652b11b9" />
-<img width="800" height="400" alt="residual_elu" src="https://github.com/user-attachments/assets/b1ef1a58-9f8f-4363-9fde-4359429febd2" />
+**SGD with Momentum**
 
-# Interpretation
-The conducted experiments show that the choice of activation function can significantly influence the performance of a neural network, even when all other training parameters remain unchanged.
-ELU achieved the highest R² score (0.849) and the lowest MAE (0.259), indicating the best overall prediction quality among the tested activation functions.
-The prediction-versus-reality plots reveal that ELU follows the ideal prediction line considerably better than Sigmoid. While ELU is able to reproduce the overall trend of the target values, the Sigmoid-based model compresses predictions into a narrow value range and fails to represent larger target values accurately.
-This behavior is also visible in the residual plots. The residuals of the ELU model are distributed relatively randomly around zero, suggesting that no strong systematic prediction errors are present. In contrast, the Sigmoid model exhibits a clear pattern: prediction errors become increasingly negative for larger predictions, indicating a systematic underestimation of larger target values.
-The error histograms further support these observations. ELU produces a narrower error distribution centered around zero, whereas Sigmoid shows a broader distribution with larger negative prediction errors.
-Overall, the results suggest that modern activation functions such as ELU and SeLU are better suited for this regression task than the classical Sigmoid function.
+SGD exhibited the slowest convergence of all tested optimizers.
+The model required considerably more epochs before reaching competitive Validation Accuracy levels.
+However, the optimization trajectory remained remarkably smooth throughout training.
 
-# Next steps / experiments
+**Strengths**
+  * Stable optimization
+  * Predictable convergence
+  * Highest throughput
 
-This experiment focused on the influence of activation functions while keeping all other parameters constant.
-Future investigations could examine additional factors that affect neural network performance:
+**Weaknesses**
+  * Slow learning
+  * Lowest final accuracy
 
-## Network Architecture
- * Compare shallow and deep networks
- * Compare narrow and wide network structures
- * Evaluate symmetric architectures (e.g. 32-64-32) versus asymmetric architectures (e.g. 32-64)
-## Optimizers
- * Compare Adam, SGD and RMSProp
- * Analyze convergence speed and prediction quality
- * Batch Size
- * Investigate the impact of different batch sizes on training stability and model performance
-## Learning Rate
- * Evaluate how learning rate tuning influences convergence and final prediction accuracy
-## Regularization
- * Introduce Dropout layers to study their effect on overfitting and generalization
-## Classification Task
- * Perform a similar comparison using the original Iris classification problem instead of a regression task
+The results suggest that SGD would likely benefit from substantially longer training schedules.
 
-The long-term goal is to identify which hyperparameters have the strongest influence on model performance and whether the observed activation-function ranking remains stable under different network configurations.
+**RMSprop**
 
+RMSprop achieved performance comparable to Adam and AdamW but showed noticeably stronger fluctuations in Validation Loss and Validation Accuracy.
+The optimizer consistently found performant solutions but demonstrated less stability near convergence.
+
+**Strengths**
+  * Competitive accuracy
+  * Rapid initial learning
+
+**Weaknesses**
+  * Increased metric oscillations
+  * Less stable convergence
+
+# Loss Curve Interpretation
+
+An important observation is the slight increase in Validation Loss after several epochs for the adaptive optimizers.
+At first glance, this behaviour may appear to indicate overfitting. However, Validation Accuracy remains largely unchanged during this phase. This suggests that the models continue making approximately the same number of correct predictions while becoming increasingly confident in individual decisions. Since Cross-Entropy Loss strongly penalizes highly confident mistakes, Validation Loss can increase even when classification accuracy remains stable.
+
+Consequently, the observed behaviour should be interpreted as normal optimization dynamics rather than severe overfitting.
+
+# Confusion Matrix Analysis
+The confusion matrix reveals a highly structured error pattern.
+
+**Best Performing Classes**
+
+Several classes achieved exceptionally high classification rates:
+
+| Class      | Approximate Accuracy |
+|------------|----------------------|
+| Trouser    | ~99%                 |
+| Bag        | ~99%                 |
+| Sandal     | ~99%                 |
+| Sneaker    | ~98%                 |
+| Ankle Boot | ~96-97%              |
+
+These categories possess highly distinctive geometric characteristics, making separation relatively straightforward.
+
+**Most challenging Classes**
+The majority of classification errors occurred among:
+
+  * Shirt
+  * T-Shirt/Top
+  * Pullover
+  * Coat
+
+The Shirt category consistently produced the highest error rates.
+Most errors occurred because Shirts were predicted as:
+
+  * T-Shirt/Top
+  * Coat
+  * Pullover
+
+Given the limited 28×28 image resolution and grayscale format, these categories share substantial visual overlap.
+The resulting confusion appears to be primarily dataset-driven rather than architecture-driven.
+
+## **Key Findings**
+
+**Confirmed Expectations**
+
+  * Adaptive optimizers converged significantly faster than SGD.
+  * AdamW achieved the strongest overall performance.
+  * SGD displayed highly stable optimization behaviour.
+  * Final accuracy differences remained relatively small.
+
+**Unexpected Findings**
+
+  * Confusion primarily originated from visually similar garment categories rather than optimization weaknesses.
+  * Remaining model limitations were largely dataset-related.
+
+
+# Experiment 2: Architecture & Regularization Benchmark
+
+## Experimental Design
+Five architectural configurations were compared using the Adam optimizer.
+
+## Tested Configurations
+   * Baseline_Adam
+   * BatchNorm
+   * LearningRate_Scheduler
+   * Full_Optimzed
+     
+## Full Optimized Includes
+   * Batch Normalization
+   * Data Augmentation
+   * Learning Rate Scheduler
+   * Early Stopping
+   * Dropout
+
+# Results
+## Validation Accuracy Ranking
+
+The strongest overall results were achieved by:
+
+  1.) BatchNorm
+  
+  2.) LR Scheduler
+  
+  3.) Baseline
+  
+  4.) Data Augmentation
+  
+  5.) Full Optimized
+  
+## Individual Analysis
+**Baseline Model**
+
+The baseline architecture already achieved approximately 93% Validation Accuracy.
+This demonstrates that the underlying CNN design is inherently well suited for Fashion-MNIST.
+The baseline therefore represents a strong starting point rather than a weak reference model.
+
+**Batch Normalization**
+
+Batch Normalization proved to be the most effective individual improvement.
+Observed benefits:
+  * Faster convergence
+  * Lower Validation Loss
+  * Improved stability
+  * Higher accuracy
+
+The learning curves remained smooth throughout training and consistently reached the highest performance levels.
+
+**Interpretation**
+
+Batch Normalization improves gradient flow and reduces internal covariate shift, allowing the optimizer to explore parameter space more efficiently.
+
+**Learning Rate Scheduler**
+
+Learning Rate Scheduling produced results nearly identical to BatchNorm.
+The scheduler initially allowed larger optimization steps and later reduced the learning rate to perform fine-tuning near convergence.
+
+**Benefits Observed**
+
+   * Smooth Validation Loss
+   * Stable convergence
+   * Strong late-stage optimization
+
+Its performance confirms the importance of dynamic learning rate adaptation.
+
+**Data Augmentation**
+
+Data Augmentation improved robustness, but the performance gain remained smaller than expected.
+Fashion-MNIST contains highly standardized and centered images.
+
+As a consequence, transformations such as:
+
+   * Rotation
+   * Zoom
+   * Translation
+
+introduce limited new information compared to more diverse natural image datasets.
+
+**Interpretation**
+
+Data Augmentation provides value, but its impact is constrained by the dataset itself.
+
+**Full Optimized**
+
+The most surprising result emerged from the Full Optimized configuration.
+Contrary to expectations, the combined model failed to outperform BatchNorm or LR Scheduler.
+Validation Accuracy remained noticeably lower, while Validation Loss stayed elevated throughout much of training.
+
+**Interpretation**
+
+The evidence suggests mild underfitting caused by excessive regularization.
+Several regularization techniques were simultaneously active:
+
+   * BatchNorm
+   * Data Augmentation
+   * ReduceLROnPlateau
+   * Dropout
+   * Early Stopping
+
+While each mechanism can improve generalization individually, their combined effect appears to have limited the effective learning capacity of the network.
+
+This finding highlights an important practical lesson:
+More optimization techniques do not automatically result in a better model.
+
+
+## Confusion Matrix Analysis
+
+The confusion matrix of the best architecture produced similar observations to Experiment 1.
+
+**Strong Classes**
+   * Trouser
+   * Bag
+   * Sneaker
+   * Sandal
+
+These classes typically exceeded 98% classification accuracy.
+
+**Weak Classes**
+
+The most difficult categories remained:
+
+   * Shirt
+   * Coat
+   * Pullover
+
+Notably, T-Shirt/Top classification improved significantly compared to earlier runs.
+
+However, part of this improvement appears to come at the expense of Shirt classification performance, indicating a shift of decision boundaries between these visually similar classes.
+
+## Key Findings
+
+**Confirmed Expectations**
+
+   * Batch Normalization improved convergence and stability.
+   * Learning Rate Scheduling improved optimization quality.
+   * The baseline architecture already performed surprisingly well.
+
+**Rejected Expectations**
+
+   * Combining all techniques did not create the strongest model.
+   * Data Augmentation produced smaller gains than expected.
+
+**Unexpeted Findings**
+
+   * The Full Optimized configuration showed signs of over-regularization and mild underfitting.
+   * Individual improvements proved more effective than maximum optimization complexity.
+
+# Overall Conclusion
+
+Across both experiments, the CNN consistently achieved classification accuracies around 92–93%, placing the model within the expected performance range for a relatively lightweight Fashion-MNIST architecture.
+The optimizer benchmark demonstrated that AdamW provides the best balance between convergence speed, stability and generalization, while SGD remains a viable alternative for longer training schedules.
+The architecture benchmark revealed that Batch Normalization and Learning Rate Scheduling contribute more meaningfully to performance than Data Augmentation on this dataset.
+Perhaps the most valuable insight is that model improvement is not a linear process.
+The strongest model was not the most complex configuration. Instead, carefully selected individual improvements outperformed the fully optimized setup.
+
+This study therefore reinforces a key machine learning principle:
+Effective model design is driven by empirical validation, not by the sheer number of applied optimization techniques.
+
+# Next Steps
+
+This benchmark opens several interesting directions for future experiments:
+
+   * Residual CNN architectures (ResNet-style blocks)
+   * Deeper convolutional networks
+   * Transfer learning with pretrained feature extractors
+   * Hyperparameter tuning of learning rates and weight decay
+   * Alternative regularization methods (L2, Label Smoothing)
+   * CIFAR-10 comparison study
+   * Fashion-MNIST ensemble models
+
+The complete source code, benchmark results, CSV exports, training curves and confusion matrices are available in this repository.
