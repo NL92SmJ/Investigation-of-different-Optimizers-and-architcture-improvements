@@ -1,4 +1,4 @@
-# Investigation-of-different-Optimizers-and-architcture-improvements
+# Investigation-of-Optimizer, Regularization & Architecture Comparison
 This case study analyzing the impact of different optimizers and certain improvements on Fashion-MNIST-dataset
 
 # Motivation & Expactation
