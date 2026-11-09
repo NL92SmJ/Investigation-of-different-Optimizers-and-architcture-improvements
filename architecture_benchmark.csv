@@ -1,0 +1,6 @@
+Configuration,Test_Accuracy,Test_Loss,Dauer_Sek
+Baseline_Adam,92.44,0.239,61.9
+BatchNorm,92.72,0.2153,87.9
+DataAugmentation,91.04,0.2616,83.0
+LR_Scheduler,91.89,0.2203,44.3
+Full_Optimized,90.6,0.2623,172.4
